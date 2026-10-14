@@ -106,23 +106,57 @@ button:focus-visible { outline: 3px solid var(--stage, #E07B39); outline-offset:
 .shot .row button { flex: 1; border: 0; border-radius: 14px; padding: 14px; font-weight: 900; font-size: 16px; cursor: pointer;
                     background: var(--surface); color: var(--ink); }
 .shot .row button.primary { background: var(--stage, #E07B39); color: #fff; }
+.shot .imgbox img + img { margin-top: 10px; }
+.shot .hint { font-size: 13px; font-weight: 700; opacity: .85; }
+
+.inapp { margin-top: 10px; background: #FFF4D6; color: #6B4A00; border-radius: 14px; padding: 12px 14px; font-size: 14px;
+         font-weight: 700; line-height: 1.5; }
+.inapp button { margin-top: 8px; border: 0; border-radius: 10px; padding: 9px 12px; font-weight: 900; font-size: 14px;
+                background: #2B2520; color: #FBF6EE; cursor: pointer; }
+
+.refs { margin-top: 18px; background: var(--surface); border-radius: 16px; padding: 4px 14px; }
+.refs summary { cursor: pointer; font-weight: 900; font-size: 15px; padding: 12px 0; }
+.refs p { margin: 0 0 8px; font-size: 13px; color: var(--muted); font-weight: 700; }
+.refs ul { margin: 0; padding: 0 0 12px; list-style: none; display: grid; gap: 8px; }
+.refs li { font-size: 14px; line-height: 1.45; }
+.refs a { color: var(--ink); font-weight: 800; text-decoration: underline; text-decoration-color: var(--line);
+          text-underline-offset: 3px; }
+.refs span { color: var(--muted); font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head><body>
 
 <div class="wrap">
   <div class="top"><h1>🍼 이유식 식단표</h1></div>
+  <div class="inapp" id="inapp" hidden></div>
   <nav class="tabs" id="tabs" role="tablist" aria-label="이유식 단계"></nav>
   <main id="panel">
     <div id="sheet"></div>
     <button class="savebtn" id="savebtn">📷 이미지 저장하기</button>
   </main>
+  <details class="refs" id="refs">
+    <summary>📚 참고한 공식 자료</summary>
+    <p>아래 공개 자료를 교차 확인해서 만들었어요. 우리 집 식단표 기준이라 아기마다 속도는 다를 수 있어요. 알레르기가 걱정되는 재료는 소아청소년과와 먼저 상의하세요.</p>
+    <ul>
+      <li><a href="https://health.kdca.go.kr/healthinfo/biz/health/gnrlzHealthInfo/gnrlzHealthInfo/gnrlzHealthInfoView.do?cntnts_sn=5470" target="_blank" rel="noopener">질병관리청</a> <span>월령별 이유기 보충식</span></li>
+      <li><a href="https://www.kns.or.kr/fileroom/FileRoom_view.asp?mode=mod&amp;idx=125&amp;page=1&amp;BoardID=Kdr" target="_blank" rel="noopener">한국영양학회</a> <span>2020 한국인 영양소 섭취기준 (영유아 철분·에너지)</span></li>
+      <li><a href="https://www.khna.or.kr/homecare/12_child/rearing02_02.php" target="_blank" rel="noopener">병원간호사회</a> <span>이유식 원칙과 주의사항</span></li>
+      <li><a href="https://www.kapard.or.kr/" target="_blank" rel="noopener">대한소아알레르기호흡기학회</a> <span>계란·밀가루 등 알레르기 식품 도입 시기</span></li>
+      <li><a href="https://iris.who.int/server/api/core/bitstreams/5abca011-4db2-4cf1-b959-45b756f7b600/content" target="_blank" rel="noopener">세계보건기구(WHO)</a> <span>영유아 보충식 가이드라인</span></li>
+      <li><a href="https://www.healthychildren.org/English/ages-stages/baby/feeding-nutrition/Pages/Starting-Solid-Foods.aspx" target="_blank" rel="noopener">미국소아과학회(AAP)</a> <span>이유식 시작 시기, 철분(소고기)</span></li>
+      <li><a href="https://www.cdc.gov/infant-toddler-nutrition/" target="_blank" rel="noopener">미국 질병통제예방센터(CDC)</a> <span>아기에게 권하는 음식·피할 음식</span></li>
+      <li><a href="https://doi.org/10.1542/peds.2005-1497" target="_blank" rel="noopener">AAP 임상보고서 (Pediatrics, 2005)</a> <span>영아 질산염 노출과 메트헤모글로빈혈증</span></li>
+      <li><a href="https://www.efsa.europa.eu/en/efsajournal/pub/689" target="_blank" rel="noopener">유럽식품안전청(EFSA)</a> <span>채소별 질산염 농도·위해성 평가 (2008)</span></li>
+    </ul>
+  </details>
 </div>
 <div class="shot" id="shot" hidden>
-  <p id="shotmsg">이미지를 길게 눌러 ‘사진에 저장’하세요</p>
-  <div class="imgbox"><img id="shotimg" alt="이유식 식단표 이미지"></div>
+  <p id="shotmsg">이미지 만드는 중…</p>
+  <div class="imgbox" id="shotimgs"></div>
+  <p class="hint" id="shothint"></p>
   <div class="row">
-    <button id="filesave" class="primary" hidden>파일로 저장</button>
+    <button id="sharesave" class="primary" hidden>📲 사진첩에 저장</button>
+    <button id="filesave" hidden>⬇️ 파일로 받기</button>
     <button id="shotclose">닫기</button>
   </div>
 </div>
@@ -136,7 +170,7 @@ const LS = "youbean-meal-checks-v2";
 
 let checks = {};
 let current = DATA[0].key;
-let downloads = null, lastBlob = null;
+let downloads = null;
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const keyOf = (st, b, n) => `${st}|${b.from}|${n.name}`;
@@ -189,7 +223,7 @@ function renderSheet() {
         <div class="meta">${b.base ? `<span>🧊 ${esc(b.base)} (3일분)</span>` : ""}${b.amount ? `<span>⚖️ 1회 ${esc(b.amount)}</span>` : ""}</div>
         ${meals}</section>`;
     }).join("")}
-    <div class="foot">youbean.ko 이유식 식단표 · ${esc(s.title)}</div>`;
+    <div class="foot">참고: 질병관리청 · 한국영양학회 · WHO · AAP · CDC · EFSA 공개 자료<br>youbean.ko 이유식 식단표 · ${esc(s.title)}</div>`;
 }
 
 function go(k) {
@@ -199,22 +233,87 @@ function go(k) {
   window.scrollTo({ top: 0 });
 }
 
+// 인스타·카톡 등 앱 안 브라우저는 다운로드·길게 눌러 저장을 막는 경우가 많다 → 외부 브라우저로 안내
+const UA = navigator.userAgent;
+const INAPP = /Instagram|FBAN|FBAV|KAKAOTALK|NAVER\(|Line\/|DaumApps|everytimeApp/i.test(UA);
+const IS_KAKAO = /KAKAOTALK/i.test(UA), IS_ANDROID = /Android/i.test(UA);
+function inappHelp() {
+  if (IS_KAKAO) return `<button data-ext="kakao">Safari/Chrome으로 열기</button>`;
+  if (IS_ANDROID) return `<button data-ext="android">Chrome으로 열기</button>`;
+  return `오른쪽 위 <b>⋯</b> → <b>‘외부 브라우저에서 열기’</b>를 눌러주세요.`;
+}
+function showInapp() {
+  if (!INAPP) return;
+  const el = document.getElementById("inapp");
+  el.innerHTML = `📌 지금은 앱 안 브라우저라 이미지 저장이 막힐 수 있어요.<br>${inappHelp()}`;
+  el.hidden = false;
+}
+
+// 한 장이 너무 길면 휴대폰이 못 만들거나 사진첩에서 보기 힘들다 → 카드 경계에서 여러 장으로 나눈다
+const PART_MAX = 2400;   // 한 장 최대 높이(CSS px)
+const SCALE = 3;         // 1장 폭 약 1050px
+let parts = [];          // [{blob, url, name}]
+
+function splitPoints(sheet) {
+  const top0 = sheet.getBoundingClientRect().top;
+  const cuts = [...sheet.querySelectorAll(".card")].map(c => c.getBoundingClientRect().top - top0 - 6);
+  const H = sheet.offsetHeight, ranges = [];
+  let start = 0;
+  for (let i = 0; i < cuts.length; i++) {
+    const next = i + 1 < cuts.length ? cuts[i + 1] : H;
+    if (next - start > PART_MAX && cuts[i] > start + 50) { ranges.push([start, cuts[i]]); start = cuts[i]; }
+  }
+  ranges.push([start, H]);
+  // 마지막 장이 너무 짧으면(띠 한 줄 수준) 앞 장에 붙인다
+  if (ranges.length > 1 && H - start < 600) { ranges.pop(); ranges[ranges.length - 1][1] = H; }
+  return ranges;
+}
+
+async function renderPart(sheet, y0, y1, label) {
+  const r = sheet.getBoundingClientRect();
+  const bg = getComputedStyle(document.body).backgroundColor;
+  const shot = await html2canvas(sheet, {
+    scale: SCALE, backgroundColor: bg, useCORS: true,
+    x: r.left + window.scrollX, y: r.top + window.scrollY + y0, width: r.width, height: y1 - y0,
+  });
+  if (!label) return shot;
+  // 2장째부터는 위에 '단계 · n/N' 띠를 붙여 순서가 헷갈리지 않게
+  const band = 34 * SCALE, out = document.createElement("canvas");
+  out.width = shot.width; out.height = shot.height + band;
+  const g = out.getContext("2d"), s = DATA.find(x => x.key === current);
+  g.fillStyle = s.color; g.fillRect(0, 0, out.width, band);
+  g.fillStyle = "#fff"; g.font = `900 ${17 * SCALE}px -apple-system, "Apple SD Gothic Neo", sans-serif`;
+  g.textBaseline = "middle"; g.fillText(label, 14 * SCALE, band / 2);
+  g.drawImage(shot, 0, band);
+  return out;
+}
+
 async function saveImage() {
   const btn = document.getElementById("savebtn"), sheet = document.getElementById("sheet");
   if (!window.html2canvas) { btn.textContent = "이미지 도구를 불러오지 못했어요. 새로고침 후 다시 눌러주세요"; return; }
   btn.disabled = true; btn.textContent = "이미지 만드는 중…";
+  parts.forEach(p => URL.revokeObjectURL(p.url)); parts = [];
   try {
     await document.fonts?.ready;
-    const w = sheet.offsetWidth, h = sheet.offsetHeight;
-    // 휴대폰 캔버스 한도(약 1,600만 화소) 안에서 최대한 선명하게
-    const scale = Math.max(1, Math.min(3, Math.sqrt(15e6 / (w * h))));
-    const canvas = await html2canvas(sheet, { scale, backgroundColor: getComputedStyle(document.body).backgroundColor, useCORS: true });
-    lastBlob = await new Promise(r => canvas.toBlob(r, "image/png"));
-    const img = document.getElementById("shotimg");
-    if (img.src.startsWith("blob:")) URL.revokeObjectURL(img.src);
-    img.src = URL.createObjectURL(lastBlob);
-    document.getElementById("shotmsg").textContent = "이미지를 길게 눌러 ‘사진에 저장’하세요";
-    document.getElementById("filesave").hidden = !(downloads || !window.claude);
+    const s = DATA.find(x => x.key === current), ranges = splitPoints(sheet), n = ranges.length;
+    for (let i = 0; i < n; i++) {
+      btn.textContent = `이미지 만드는 중… ${i + 1}/${n}`;
+      const label = i ? `${s.title} · ${i + 1}/${n} 이어서` : "";
+      const canvas = await renderPart(sheet, ranges[i][0], ranges[i][1], label);
+      const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.92));
+      if (!blob) throw new Error("toBlob");
+      parts.push({ blob, url: URL.createObjectURL(blob), name: `이유식_${s.key}_${i + 1}of${n}.jpg` });
+    }
+    document.getElementById("shotimgs").innerHTML = parts.map((p, i) => `<img src="${p.url}" alt="${esc(s.title)} ${i + 1}/${n}">`).join("");
+    const files = parts.map(p => new File([p.blob], p.name, { type: "image/jpeg" }));
+    const canShare = !!(navigator.canShare && navigator.canShare({ files }));
+    document.getElementById("sharesave").hidden = !canShare;
+    document.getElementById("filesave").hidden = INAPP && !downloads;
+    document.getElementById("shotmsg").textContent = `${s.title} 이미지 ${n}장`;
+    document.getElementById("shothint").innerHTML = canShare
+      ? "‘사진첩에 저장’ → ‘이미지 저장’을 누르면 한 번에 저장돼요. 이미지를 길게 눌러도 돼요."
+      : INAPP ? `앱 안 브라우저에선 저장이 막혀 있어요. ${inappHelp()}`
+      : "이미지를 길게 눌러 ‘사진에 저장’하거나 ‘파일로 받기’를 누르세요.";
     document.getElementById("shot").hidden = false;
   } catch (e) {
     btn.textContent = "이미지를 만들지 못했어요. 다시 눌러주세요";
@@ -224,30 +323,40 @@ async function saveImage() {
   btn.disabled = false; btn.textContent = "📷 이미지 저장하기";
 }
 
+async function shareSave() {
+  const files = parts.map(p => new File([p.blob], p.name, { type: "image/jpeg" }));
+  try {
+    await navigator.share({ files, title: "이유식 식단표" });
+    document.getElementById("shotmsg").textContent = "저장했어요 ✅";
+  } catch (err) {
+    if (err?.name !== "AbortError") document.getElementById("shothint").textContent = "공유창을 열 수 없어요. 이미지를 길게 눌러 저장하세요.";
+  }
+}
+
+async function fileSave() {
+  for (const p of parts) {
+    if (downloads) {   // Claude 아티팩트 뷰어
+      try { await downloads.save({ filename: p.name, data: p.blob }); } catch (e) { break; }
+      continue;
+    }
+    const a = document.createElement("a");
+    a.href = p.url; a.download = p.name;
+    document.body.appendChild(a); a.click(); a.remove();
+    await new Promise(r => setTimeout(r, 600));   // 여러 장 연속 다운로드가 막히지 않게 간격
+  }
+}
+
 document.addEventListener("click", async e => {
   const t = e.target.closest("button");
   if (!t) return;
   if (t.dataset.tab) return go(t.dataset.tab);
   if (t.id === "savebtn") return saveImage();
   if (t.id === "shotclose") { document.getElementById("shot").hidden = true; return; }
-  if (t.id === "filesave") {
-    const s = DATA.find(x => x.key === current);
-    const filename = `이유식_${s.key}.png`;
-    if (!downloads) {   // 일반 브라우저(github.io): 링크로 바로 내려받기
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(lastBlob); a.download = filename;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
-      return;
-    }
-    try {
-      await downloads.save({ filename, data: lastBlob });
-      document.getElementById("shotmsg").textContent = "저장했어요 ✅";
-    } catch (err) {
-      document.getElementById("shotmsg").textContent =
-        err?.code === "declined" ? "저장을 취소했어요" : "파일 저장을 쓸 수 없어요. 이미지를 길게 눌러 저장하세요";
-      if (err?.code !== "declined" && err?.code !== "rate_limited") t.hidden = true;
-    }
+  if (t.id === "sharesave") return shareSave();
+  if (t.id === "filesave") return fileSave();
+  if (t.dataset.ext === "kakao") { location.href = "kakaotalk://web/openExternal?url=" + encodeURIComponent(location.href); return; }
+  if (t.dataset.ext === "android") {
+    location.href = `intent://${location.host}${location.pathname}#Intent;scheme=https;package=com.android.chrome;end`;
     return;
   }
   if (t.dataset.i !== undefined) {
@@ -261,7 +370,7 @@ document.addEventListener("click", async e => {
   }
 });
 
-renderTabs(); renderSheet();
+renderTabs(); renderSheet(); showInapp();
 (async () => { try { downloads = await window.claude?.use?.("downloads"); } catch (e) { downloads = null; } })();
 </script>
 
