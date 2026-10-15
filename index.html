@@ -241,6 +241,8 @@ const IS_IOS = /iPhone|iPad|iPod/i.test(UA) || (navigator.platform === "MacIntel
 function inappHelp() {
   if (IS_KAKAO) return `<button data-ext="kakao">Safari/Chrome으로 열기</button>`;
   if (IS_ANDROID) return `<button data-ext="android">Chrome으로 열기</button>`;
+  // 아이폰(인스타 등): x-safari-https 스킴으로 사파리 열기 시도 + 안 되면 수동 안내
+  if (IS_IOS) return `<button data-ext="safari">Safari로 열기</button><br><span style="font-weight:600">안 열리면 오른쪽 위 <b>⋯</b> → <b>‘외부 브라우저에서 열기’</b></span>`;
   return `오른쪽 위 <b>⋯</b> → <b>‘외부 브라우저에서 열기’</b>를 눌러주세요.`;
 }
 function showInapp() {
@@ -361,6 +363,7 @@ document.addEventListener("click", async e => {
   if (t.id === "sharesave") return shareSave();
   if (t.id === "filesave") return fileSave();
   if (t.dataset.ext === "kakao") { location.href = "kakaotalk://web/openExternal?url=" + encodeURIComponent(location.href); return; }
+  if (t.dataset.ext === "safari") { location.href = "x-safari-" + location.href; return; }
   if (t.dataset.ext === "android") {
     location.href = `intent://${location.host}${location.pathname}#Intent;scheme=https;package=com.android.chrome;end`;
     return;
