@@ -156,7 +156,7 @@ button:focus-visible { outline: 3px solid var(--stage, #E07B39); outline-offset:
   <p class="hint" id="shothint"></p>
   <div class="row">
     <button id="sharesave" class="primary" hidden>📲 사진첩에 저장</button>
-    <button id="filesave" hidden>⬇️ 파일로 받기</button>
+    <button id="filesave" class="primary" hidden>📥 갤러리에 저장</button>
     <button id="shotclose">닫기</button>
   </div>
 </div>
@@ -237,6 +237,7 @@ function go(k) {
 const UA = navigator.userAgent;
 const INAPP = /Instagram|FBAN|FBAV|KAKAOTALK|NAVER\(|Line\/|DaumApps|everytimeApp/i.test(UA);
 const IS_KAKAO = /KAKAOTALK/i.test(UA), IS_ANDROID = /Android/i.test(UA);
+const IS_IOS = /iPhone|iPad|iPod/i.test(UA) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 function inappHelp() {
   if (IS_KAKAO) return `<button data-ext="kakao">Safari/Chrome으로 열기</button>`;
   if (IS_ANDROID) return `<button data-ext="android">Chrome으로 열기</button>`;
@@ -277,12 +278,12 @@ async function renderPart(sheet, y0, y1, label) {
     x: r.left + window.scrollX, y: r.top + window.scrollY + y0, width: r.width, height: y1 - y0,
   });
   if (!label) return shot;
-  // 2장째부터는 위에 '단계 · n/N' 띠를 붙여 순서가 헷갈리지 않게
-  const band = 34 * SCALE, out = document.createElement("canvas");
+  // 모든 장 위에 '단계 · n/N' 띠 → 사진첩에서 몇 단계 몇 번째인지 바로 보이게
+  const band = 40 * SCALE, out = document.createElement("canvas");
   out.width = shot.width; out.height = shot.height + band;
   const g = out.getContext("2d"), s = DATA.find(x => x.key === current);
   g.fillStyle = s.color; g.fillRect(0, 0, out.width, band);
-  g.fillStyle = "#fff"; g.font = `900 ${17 * SCALE}px -apple-system, "Apple SD Gothic Neo", sans-serif`;
+  g.fillStyle = "#fff"; g.font = `900 ${20 * SCALE}px -apple-system, "Apple SD Gothic Neo", sans-serif`;
   g.textBaseline = "middle"; g.fillText(label, 14 * SCALE, band / 2);
   g.drawImage(shot, 0, band);
   return out;
@@ -298,7 +299,7 @@ async function saveImage() {
     const s = DATA.find(x => x.key === current), ranges = splitPoints(sheet), n = ranges.length;
     for (let i = 0; i < n; i++) {
       btn.textContent = `이미지 만드는 중… ${i + 1}/${n}`;
-      const label = i ? `${s.title} · ${i + 1}/${n} 이어서` : "";
+      const label = n > 1 ? `${s.title} (${s.month}) · ${i + 1}/${n}` : `${s.title} (${s.month})`;
       const canvas = await renderPart(sheet, ranges[i][0], ranges[i][1], label);
       const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.92));
       if (!blob) throw new Error("toBlob");
@@ -307,13 +308,17 @@ async function saveImage() {
     document.getElementById("shotimgs").innerHTML = parts.map((p, i) => `<img src="${p.url}" alt="${esc(s.title)} ${i + 1}/${n}">`).join("");
     const files = parts.map(p => new File([p.blob], p.name, { type: "image/jpeg" }));
     const canShare = !!(navigator.canShare && navigator.canShare({ files }));
-    document.getElementById("sharesave").hidden = !canShare;
-    document.getElementById("filesave").hidden = INAPP && !downloads;
+    // iPhone: 공유시트에 '이미지 저장'이 있음 / 안드로이드: 공유시트엔 갤러리 저장이 없어서 바로 다운로드
+    const useShare = IS_IOS && canShare;
+    document.getElementById("sharesave").hidden = !useShare;
+    document.getElementById("filesave").hidden = useShare || (INAPP && !downloads);
+    document.getElementById("filesave").textContent = "📥 갤러리에 저장";
     document.getElementById("shotmsg").textContent = `${s.title} 이미지 ${n}장`;
-    document.getElementById("shothint").innerHTML = canShare
-      ? "‘사진첩에 저장’ → ‘이미지 저장’을 누르면 한 번에 저장돼요. 이미지를 길게 눌러도 돼요."
-      : INAPP ? `앱 안 브라우저에선 저장이 막혀 있어요. ${inappHelp()}`
-      : "이미지를 길게 눌러 ‘사진에 저장’하거나 ‘파일로 받기’를 누르세요.";
+    document.getElementById("shothint").innerHTML = INAPP && !useShare
+      ? `앱 안 브라우저에선 저장이 막혀 있어요. ${inappHelp()}`
+      : useShare ? "‘사진첩에 저장’ → 목록에서 <b>‘이미지 저장’</b>을 누르면 한 번에 저장돼요."
+      : IS_ANDROID ? "‘갤러리에 저장’을 누르면 갤러리 ‘Download’ 앨범에 저장돼요. 이미지를 길게 눌러 ‘이미지 다운로드’도 돼요."
+      : "‘갤러리에 저장’을 누르면 이미지가 다운로드돼요.";
     document.getElementById("shot").hidden = false;
   } catch (e) {
     btn.textContent = "이미지를 만들지 못했어요. 다시 눌러주세요";
@@ -342,8 +347,9 @@ async function fileSave() {
     const a = document.createElement("a");
     a.href = p.url; a.download = p.name;
     document.body.appendChild(a); a.click(); a.remove();
-    await new Promise(r => setTimeout(r, 600));   // 여러 장 연속 다운로드가 막히지 않게 간격
+    await new Promise(r => setTimeout(r, 700));   // 여러 장 연속 다운로드가 막히지 않게 간격
   }
+  if (!downloads) document.getElementById("shotmsg").textContent = `저장했어요 ✅ (${parts.length}장)`;
 }
 
 document.addEventListener("click", async e => {
