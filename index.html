@@ -193,6 +193,8 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":
 const keyOf = (st, b, n) => `${st}|${b.from}|${n.name}`;
 
 try { checks = JSON.parse(localStorage.getItem(LS) || "{}") || {}; } catch (e) {}
+// 방문자 측정(GoatCounter) 이벤트. 스크립트가 없는 곳(아티팩트·로컬)에서는 아무 일도 안 한다
+const track = (path, title) => { try { window.goatcounter?.count?.({ path, title, event: true }); } catch (e) {} };
 const persist = () => { try { localStorage.setItem(LS, JSON.stringify(checks)); } catch (e) {} };
 
 function renderTabs() {
@@ -259,6 +261,7 @@ function renderSheet() {
 
 function go(k) {
   current = k;
+  track("tab/" + k, "단계 탭");
   renderTabs(); renderSheet();
   document.getElementById("tab-" + k)?.scrollIntoView({ inline: "center", block: "nearest" });
   window.scrollTo({ top: 0 });
@@ -326,6 +329,7 @@ async function saveImage() {
   const btn = document.getElementById("savebtn"), sheet = document.getElementById("sheet");
   if (!window.html2canvas) { btn.textContent = "이미지 도구를 불러오지 못했어요. 새로고침 후 다시 눌러주세요"; return; }
   btn.disabled = true; btn.textContent = "이미지 만드는 중…";
+  track("save/" + current, "이미지 저장");
   parts.forEach(p => URL.revokeObjectURL(p.url)); parts = [];
   try {
     await document.fonts?.ready;
@@ -414,4 +418,5 @@ renderTabs(); renderSheet(); showInapp();
 (async () => { try { downloads = await window.claude?.use?.("downloads"); } catch (e) { downloads = null; } })();
 </script>
 
+<script data-goatcounter="https://youbeanko.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 </body></html>
